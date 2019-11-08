@@ -35,6 +35,7 @@ typedef void (Destructor)(void *);
 // TODO: add hash cache and meta data. And update 'make-static-*' as well
 typedef struct Value {TYPE_SIZE type; REFS_SIZE refs; struct Value* next;} Value;
 typedef struct {TYPE_SIZE type; REFS_SIZE refs; int64_t numVal;} Integer;
+typedef struct {TYPE_SIZE type; REFS_SIZE refs; double floatVal;} Float;
 typedef struct HashedValue {TYPE_SIZE type; REFS_SIZE refs; Integer *hash;} HashedValue;
 typedef struct {TYPE_SIZE type; REFS_SIZE refs; Integer *hash; int64_t len; char buffer[0];} String;
 typedef struct {TYPE_SIZE type; REFS_SIZE refs; Integer *hash; int64_t len; Value *source; char *buffer;} SubString;
@@ -92,24 +93,24 @@ REFS_SIZE refsError;
 #define IgnoreType -1
 #define UnknownType 0
 #define IntegerType 1
-#define StringBufferType 2
-#define FnArityType 3
-#define FunctionType 4
-#define SubStringType 5
-#define ListType 6
-#define MaybeType 7
-#define VectorType 8
-#define VectorNodeType 9
-#define SymbolType 10
-#define BitmapIndexedType 11
-#define ArrayNodeType 12
-#define HashCollisionNodeType 13
-#define HashMapType 14
-#define PromiseType 15
-#define FutureType 16
-#define AgentType 17
-#define OpaqueType 18
-#define FloatType 19
+#define FloatType 2
+#define StringBufferType 3
+#define FnArityType 4
+#define FunctionType 5
+#define SubStringType 6
+#define ListType 7
+#define MaybeType 8
+#define VectorType 9
+#define VectorNodeType 10
+#define SymbolType 11
+#define BitmapIndexedType 12
+#define ArrayNodeType 13
+#define HashCollisionNodeType 14
+#define HashMapType 15
+#define PromiseType 16
+#define FutureType 17
+#define AgentType 18
+#define OpaqueType 19
 #define CoreTypeCount 20
 #define TypeConstraintType 21
 #define NoValuesType 22
@@ -191,6 +192,7 @@ Function *malloc_function(int arityCount);
 String *malloc_string(int len);
 Maybe *malloc_maybe();
 Integer *malloc_integer();
+Float *malloc_float();
 Vector *malloc_vector();
 FnArity *findFnArity(Value *fnVal, int64_t argCount);
 ReifiedVal *malloc_reified(int64_t implCount);
@@ -207,6 +209,9 @@ Value *integer_str(Value *arg0);
 Value *integer_EQ(Value *arg0, Value *arg1);
 Value *integer_LT(Value *arg0, Value *arg1);
 Value *integerValue(int64_t n);
+Value *floatValue(double n);
+Value *floatEQ(Value *arg0, Value *arg1);
+Value *floatLT(Value *arg0, Value *arg1);
 Vector *vectConj(Vector *vect, Value *val);
 Vector *mutateVectConj(Vector *vect, Value *val);
 Value *vectStore(Vector *vect, unsigned index, Value *val);

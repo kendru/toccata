@@ -194,7 +194,7 @@ Integer *malloc_integer() {
     if (newInteger == (Integer *)0) {
       Integer *numberStructs = (Integer *)my_malloc(sizeof(Integer) * 100);
       for (int i = 1; i < 99; i++) {
-	numberStructs[i].refs = refsError;
+        numberStructs[i].refs = refsError;
         ((Value *)&numberStructs[i])->next = (Value *)&numberStructs[i + 1];
       }
       numberStructs[99].refs = refsError;
@@ -244,6 +244,66 @@ typedef void (*freeValFn)(Value *);
 void freeInteger(Value *v) {
   v->next = freeIntegers.head;
   freeIntegers.head = v;
+}
+
+FreeValList centralFreeFloats = (FreeValList){(Value *)0, 0};
+__thread FreeValList freeFloats = {(Value *)0, 0};
+Float *malloc_float() {
+  Float *newFloat = (Float *)freeFloats.head;
+#ifdef SINGLE_THREADED
+  if (newFloat == (Float *)0) {
+    newFloat = (Float *)removeFreeValue(&centralFreeFloats);
+    if (newFloat == (Float *)0) {
+      Float *floatStructs = (Float *)my_malloc(sizeof(Float) * 100);
+      for (int i = 1; i < 99; i++) {
+        floatStructs[i].refs = refsError;
+        ((Value *)&floatStructs[i])->next = (Value *)&floatStructs[i + 1];
+      }
+      floatStructs[99].refs = refsError;
+      ((Value *)&floatStructs[99])->next = (Value *)0;
+      freeFloats.head = (Value *)&numberStructs[1];
+
+      floatStructs->type = FloatType;
+      floatStructs->refs = refsInit;
+      return(floatStructs);
+    }
+  } else {
+    freeFloats.head = freeFloats.head->next;
+  }
+  newFloat->type = FloatType;
+  newFloat->refs = refsInit;
+#else
+  if (newFloat == (Float *)0) {
+    newFloat = (Float *)removeFreeValue(&centralFreeFloats);
+    if (newFloat == (Float *)0) {
+      Float *floatStructs = (Float *)my_malloc(sizeof(Float) * 100);
+#ifdef CHECK_MEM_LEAK
+      __atomic_fetch_add(&malloc_count, 99, __ATOMIC_ACQ_REL);
+#endif
+      for (int i = 1; i < 99; i++) {
+        __atomic_store(&floatStructs[i].refs, &refsError, __ATOMIC_RELAXED);
+        ((Value *)&floatStructs[i])->next = (Value *)&floatStructs[i + 1];
+      }
+      __atomic_store(&floatStructs[99].refs, &refsError, __ATOMIC_RELAXED);
+      ((Value *)&floatStructs[99])->next = (Value *)0;
+      freeFloats.head = (Value *)&floatStructs[1];
+
+      floatStructs->type = FloatType;
+      __atomic_store(&floatStructs->refs, &refsInit, __ATOMIC_RELAXED);
+      return(floatStructs);
+    }
+  } else {
+    freeFloats.head = freeFloats.head->next;
+  }
+  newFloat->type = FloatType;
+  __atomic_store(&newFloat->refs, &refsInit, __ATOMIC_RELAXED);
+#endif
+  return(newFloat);
+}
+
+void freeFloat(Value *v) {
+  v->next = freeFloats.head;
+  freeFloats.head = v;
 }
 
 FreeValList centralFreeStrings = (FreeValList){(Value *)0, 0};
@@ -1177,6 +1237,7 @@ void freeOpaquePtr(Value *v) {
 
 freeValFn freeJmpTbl[CoreTypeCount] = {NULL,
 				       &freeInteger,
+				       &freeFloat,
 				       &freeString,
 				       &freeFnArity,
 				       &freeFunction,
@@ -1328,6 +1389,7 @@ void freeAll() {
   emptyFreeList(&centralFreeVectors);
   emptyFreeList(&centralFreeVectorNodes);
   emptyFreeList(&centralFreeStrings);
+  emptyFreeList(&centralFreeFloats);
   emptyFreeList(&centralFreeIntegers);
 
 //*
@@ -1795,6 +1857,38 @@ Value *integer_EQ(Value *arg0, Value *arg1) {
   } else {
     dec_and_free(arg1, 1);
     return(maybe((List *)0, (Value *)0, arg0));
+  }
+}
+
+Value *floatValue(double n) {
+  Float *floatVal = malloc_float();
+  floatVal->floatVal = n;
+  return((Value *)floatVal);
+};
+
+Value *floatEQ(Value *arg0, Value *arg1) {
+  if (FloatType != arg0->type || FloatType != arg1->type) {
+    dec_and_free(arg0, 1);
+    dec_and_free(arg1, 1);
+    return(nothing);
+  } else if (((Float *)arg0)->floatVal != ((Float *)arg1)->floatVal) {
+    dec_and_free(arg0, 1);
+    dec_and_free(arg1, 1);
+    return(nothing);
+  } else {
+    dec_and_free(arg1, 1);
+    return(maybe((List *)0, (Value *)0, arg0));
+  }
+}
+
+Value *floatLT(Value *arg0, Value *arg1) {
+  if (((Float *)arg0)->floatVal < ((Float *)arg1)->floatVal) {
+     dec_and_free(arg1, 1);
+     return(maybe((List *)0, (Value *)0, arg0));
+  } else {
+     dec_and_free(arg0, 1);
+     dec_and_free(arg1, 1);
+     return(nothing);
   }
 }
 

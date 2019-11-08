@@ -2196,6 +2196,16 @@
                   (reduce 0 (fn [n c]
                               (+ (* n 10) (- (char-code c) code-0))))))))
 
+; (defn str-to-float [float-str]
+;   (assert (instance? String float-str))
+;   (let [first-char (first float-str)
+;         [negate float-str] (either (or (and (flat-map first-char (partial = "-"))
+;                                             (maybe [-1 (rest float-str)]))
+;                                        (and (flat-map first-char (partial = "+"))
+;                                             (maybe [1 (rest float-str)])))
+;                                    [1 float-str])]
+;         [exponent float-str] (either )
+;     [negate float-str]))
 
 (deftype HashSet [set-map]
   (assert (instance? HashMap set-map))

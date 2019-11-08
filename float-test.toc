@@ -1,0 +1,19 @@
+(defn str-to-float [float-str]
+  (assert (instance? String float-str))
+  (let [first-char (first float-str)
+        [negate float-str] (either (or (and (flat-map first-char (partial = "-"))
+                                            (maybe [-1 (rest float-str)]))
+                                       (and (flat-map first-char (partial = "+"))
+                                            (maybe [1 (rest float-str)])))
+                                   [1 float-str])]
+    [negate float-str]))
+
+(main [_]
+  (let [s1 "-12.34"
+        s2 "+12.34"
+        s3 "12.34"]
+    (println (str-to-float s1))
+    (println (str-to-float s2))
+    (println (str-to-float s3))
+    (println (first "foo"))))
+    ; (println (take "12.34e-2" 2))))
